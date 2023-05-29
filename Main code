@@ -1,0 +1,401 @@
+# Sad-Joyride
+import pygame,random 
+
+pygame.init()
+
+screen_width = 800
+screen_height = 600
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption("Sad Joyride")
+
+# game variables
+game_paused = False
+menu_state = "main"
+text_color = (255, 255, 255)
+background1 = pygame.image.load("Background.png")
+x = 50
+y = 200
+fps = 30
+clock = pygame.time.Clock()
+DownStop = True
+mob_spawner = pygame.time.get_ticks() - 5000
+mob_timer = 2500
+# Menu_Image 
+menu_image = pygame.image.load("Main-menu.png")
+
+# create menu options
+play_button = pygame.Rect(255, 255, 255, 50)
+continue_button = pygame.Rect(275, 325, 280,50)
+quit_button = pygame.Rect(275, 400, 280,50)
+# create a Character run class
+
+class Character(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.attack_animation = False
+        self.run_sprites = []
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run1.png'), (100,100)))
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run2.png'), (100,100)))
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run3.png'), (100,100)))
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run4.png'), (100,100)))
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run5.png'), (100,100)))
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run6.png'), (100,100)))
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run7.png'), (100,100)))
+        self.run_sprites.append(pygame.transform.scale(pygame.image.load('run8.png'), (100,100)))
+        self.jump_sprites = []
+        self.jump_sprites.append(pygame.transform.scale(pygame.image.load('jump1.png'), (100,100)))
+        self.jump_sprites.append(pygame.transform.scale(pygame.image.load('jump2.png'), (100,100)))
+        self.jump_sprites.append(pygame.transform.scale(pygame.image.load('jump3.png'), (100,100)))
+        self.jump_sprites.append(pygame.transform.scale(pygame.image.load('jump4.png'), (100,100)))
+        self.current_sprite = 0
+        self.image = self.run_sprites[self.current_sprite]
+        self.rect = self.image.get_rect()
+        self.rect.bottomleft = [50,100]
+        self.speed = 4
+        self.x_position = 50
+        self.y_position = 540
+        self.jumping = False
+        self.jump_height = 0
+        self.DownStop = False
+
+    def update(self):
+        keys = pygame.key.get_pressed()
+        # Sets a condition to my keys that once pressed right or left it will run the animation
+        if keys[pygame.K_RIGHT]:
+            self.current_sprite += 1
+            if self.current_sprite >= len(self.run_sprites):
+                self.current_sprite = 0
+            self.image = self.run_sprites[self.current_sprite]
+            self.x_position += self.speed
+        elif keys[pygame.K_LEFT]:
+            self.current_sprite += 1
+            if self.current_sprite >= len(self.run_sprites):
+                self.current_sprite = 0
+            self.image = self.run_sprites[self.current_sprite]
+            self.x_position -= self.speed
+        else:
+            self.current_sprite = 0
+            self.image = self.run_sprites[self.current_sprite]
+
+        # handle jumping animation
+        if self.jumping:
+            if self.jump_height >= len(self.jump_sprites):
+                self.jump_height = 0
+                self.jumping = False
+                self.current_sprite = 0
+                self.image = self.run_sprites[self.current_sprite]
+            else:
+                self.image = self.jump_sprites[self.jump_height]
+                self.y_position -= self.speed * 2
+                self.rect.bottomleft = [self.x_position, self.y_position]
+                self.jump_height += 1
+        else:
+            # update the sprite's rect position
+            self.rect.bottomleft = [self.x_position, self.y_position]
+
+        # makes sure the sprite cannot go below the games floor, and keeps above the grassy layer.
+        if self.rect.bottom > 540:
+           self.DownStop = True
+        if self.rect.bottom < 540:
+           self.DownStop = False
+
+    # 
+    def move_UP(self):
+        if not self.jumping:
+            self.jumping = True
+            self.current_sprite = 0
+            self.jump_height = 0
+
+    def move_right(self):
+        self.x_position += self.speed
+
+    def move_down(self):
+        if self.DownStop == False:
+           self.y_position += self.speed
+
+    def move_left(self):
+        self.x_position -= self.speed
+
+        
+
+
+
+class Idle(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.attack_animation = False
+        self.sprites = []
+        self.sprites.append(pygame.transform.scale(pygame.image.load('idle1.png'), (100,100)))
+        self.current_sprite = 0
+        self.image = self.sprites[self.current_sprite]
+        self.rect = self.image.get_rect()
+        self.rect.topleft = [x,y]
+        self.speed = 5
+    
+    def update(self):
+        self.current_sprite += 1
+        if self.current_sprite >= len(self.sprites):
+            self.current_sprite = 0
+        self.image = self.sprites[self.current_sprite]
+    
+    def move_UP(self):
+        self.rect.y -= self.speed
+
+    def move_right(self):
+        self.rect.x += self.speed
+
+    def move_down(self):
+        self.rect.y += self.speed
+
+    def move_left(self):
+        self.rect.x -+ self.speed
+
+
+
+class Jump(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.attack_animation = False
+        self.sprites = []
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump1.png'), (100,100)))
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump2.png'), (100,100)))
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump3.png'), (100,100)))
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump4.png'), (100,100)))
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump5.png'), (100,100)))
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump6.png'), (100,100)))
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump7.png'), (100,100)))
+        self.sprites.append(pygame.transform.scale(pygame.image.load('jump8.png'), (100,100)))
+        self.current_sprite = -1
+        self.image = self.sprites[0]
+        self.rect = self.image.get_rect()
+        self.rect.topleft = [x,y]
+        self.speed = 5
+        self.is_jumping = False
+        self.jump_count = 0
+        self.jump_height = 100
+        self.gravity = 5
+
+    def reset_animation(self):
+        self.current_sprite = -1
+        self.image = self.sprites[0]
+
+    def update(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            if not self.is_jumping:
+                self.current_sprite = -1
+                self.jump_count = 0
+            self.is_jumping = True
+        if self.is_jumping:
+            self.current_sprite += 1
+            if self.current_sprite >= len(self.sprites):
+                self.current_sprite = 0
+            self.image = self.sprites[self.current_sprite]
+            self.jump_count += self.speed
+            if self.jump_count >= self.jump_height:
+                self.is_jumping = False
+                self.reset_animation()
+        else:
+            self.rect.y += self.gravity
+            self.reset_animation()
+
+    def move_UP(self):
+        self.rect.y -= self.speed
+
+    def move_right(self):
+        self.rect.x += self.speed
+
+    def move_down(self):
+        self.rect.y += self.speed
+
+    def move_left(self):
+        self.rect.x -= self.speed
+
+# class for my first mob
+class Skeleton(pygame.sprite.Sprite):
+    def __init__(self,xvalue,yvalue):
+        pygame.sprite.Sprite.__init__(self)
+        # associates the image to the mob
+        self.image = pygame.image.load("Skeleton.png")
+        self.image = pygame.transform.scale(self.image,(64,64))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = [xvalue, yvalue]
+    
+    def update(self):
+        self.rect.x -= 4
+
+# class for my second mob
+class Raven(pygame.sprite.Sprite):
+    def __init__(self,xvalue,yvalue):
+        pygame.sprite.Sprite.__init__(self)
+        # associates the image to the mob
+        self.image = pygame.image.load("Raven.png")
+        self.image = pygame.transform.scale(self.image,(64,64))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = [xvalue, yvalue]
+    
+    def update(self):
+        self.rect.x -= 12
+
+# class for my third mob
+class Slime(pygame.sprite.Sprite):
+    def __init__(self,xvalue,yvalue):
+        pygame.sprite.Sprite.__init__(self)
+        # associates the image to the mob
+        self.image = pygame.image.load("slime.png")
+        self.image = pygame.transform.scale(self.image,(64,64))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = [xvalue, yvalue]
+        self.velocity = 0
+
+    def update(self):
+        self.velocity += 5
+        if self.velocity > 25:
+            self.velocity = 5
+        if self.rect.bottom < 540:
+            self.rect.y += self.velocity
+            self.rect.x -= 10
+        if self.rect.bottom >= 540:
+            self.rect.x -= 5
+
+
+
+
+
+
+player = Character(100, 100)
+Stationary = Idle(200, 100)
+Jump1 = Jump(300,100)
+player_sprites = pygame.sprite.Group(player, Stationary, Jump1)
+mobs_sprites = pygame.sprite.Group()
+
+
+# game loop
+run = True
+while run:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if game_paused:
+                if continue_button.collidepoint(event.pos):
+                    game_paused = False
+            else:
+                if quit_button.collidepoint(event.pos):
+                    run = False
+                elif play_button.collidepoint(event.pos):
+                    # transition to new menu state and unpause game
+                    menu_image = background1
+                    menu_state = "new"
+                    game_paused = False
+ 
+    # handle keyboard input
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_UP]:
+        player.move_UP()
+    
+    if keys[pygame.K_RIGHT]:
+        player.move_right()
+    
+    if keys[pygame.K_DOWN]:
+        player.move_down()
+    # update player sprite animation
+    # update display
+    player.update()
+    Stationary.update()
+    Jump1.update()
+    
+
+
+
+
+    # update display
+    player.update()
+    Stationary.update()
+    Jump1.update()
+   
+    pygame.display.flip()
+
+
+ # check if player is hitting a boundary
+    boundary_top = 10
+    boundary_left = 10
+    boundary_right = screen_width
+    boundary_bottom = screen_height
+    if player.rect.top <= boundary_top:
+        player.rect.top = boundary_top
+    elif player.rect.bottom >= boundary_bottom:
+        player.rect.bottom = boundary_bottom
+    if player.rect.left < boundary_left:
+        player.rect.left = boundary_left
+    elif player.rect.right > boundary_right:
+        player.rect.right = boundary_right
+# character character idle class
+
+
+# draw menu
+    if menu_state == "main":
+        screen.blit(menu_image, (0, 0))
+        if game_paused:
+            pygame.draw.rect(screen, (0, 0, 0), continue_button)
+            pygame.draw.rect(screen, (0, 0, 0), quit_button)
+            draw_text = pygame.font.SysFont(None, 50).render("Continue", True, text_color)
+            screen.blit(draw_text, (300, 330))
+            draw_text = pygame.font.SysFont(None, 50).render("Quit", True, text_color)
+            screen.blit(draw_text, (300, 405))
+        else:
+            pygame.draw.rect(screen, (0, 0, 0), play_button)
+            pygame.draw.rect(screen, (0, 0, 0), quit_button)
+            draw_text = pygame.font.SysFont(None, 50).render("Play", True, text_color)
+            screen.blit(draw_text, (315, 250))
+            draw_text = pygame.font.SysFont(None, 50).render("Quit", True, text_color)
+            screen.blit(draw_text, (315, 425))
+    elif menu_state == "new":
+        screen.blit(background1, (0, 0))
+        screen.blit(player.image, player.rect)
+
+    # spawn the obstacles
+    # only works if the main game is on the screen
+    if menu_state == "new":
+       # gets the current tick rate
+       time = pygame.time.get_ticks()
+       # choose a random integer from 1 to 3
+       mobspawn = random.randint(1,3)
+       if mobspawn == 1:
+           # if the current tick rate - the timer is greater then spawn time do the next steps
+           if time - mob_timer > mob_spawner:
+               # create object for class
+               skeleton = Skeleton(800,475)
+               # add object to sprite group
+               mobs_sprites.add(skeleton)
+               # resets spawn timer
+               mob_spawner = pygame.time.get_ticks()
+               # chooses random integer again to spawn other mobs
+               mobspawn = random.randint(1,3)
+       if mobspawn == 2:
+           if time - mob_timer > mob_spawner:
+               raven = Raven(800,random.randint(0,300))
+               mobs_sprites.add(raven)
+               mob_spawner = pygame.time.get_ticks()
+               mobspawn = random.randint(1,3)
+       if mobspawn == 3:
+           if time - mob_timer > mob_spawner:
+               slime = Slime(800,0)
+               mobs_sprites.add(slime)
+               mob_spawner = pygame.time.get_ticks()
+               mobspawn = random.randint(1,3)
+    
+    
+    mobs_sprites.draw(screen)
+    mobs_sprites.update()
+    pygame.display.update()
+
+    # end the game
+    if pygame.sprite.groupcollide(mobs_sprites,player_sprites, False, False):
+        menu_state = "main"
+
+    # limit the frame rate
+    clock.tick(fps)
+
+# quit the game when the main loop exits
+pygame.quit() 
